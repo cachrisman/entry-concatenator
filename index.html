@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title></title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/contentful-ui-extensions-sdk@3/dist/cf-extension.css">
+</head>
+
+<body>
+  <input id="title" type="text" class="form-control" style="width: 98%; font-size: 14px">
+  <script src="https://unpkg.com/contentful-ui-extensions-sdk@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.5/debounce.js"></script>
+  <script>
+    window.contentfulExtension.init(api => {
+      const titleField = api.field
+      const quantityField = api.entry.fields['quantity']
+      const measurementField = api.entry.fields['measurement']
+      const ingredientField = api.entry.fieldsa['ingredient']
+
+      const _ = window._
+      const debouncedUpdateStatus = _.debounce(updateStatus, 500)
+
+      const input = document.getElementById('title')
+      const statusElements = {
+        error: document.getElementById('error'),
+        ok: document.getElementById('ok'),
+        loading: document.getElementById('loading')
+      }
+
+      api.window.updateHeight()
+
+      quantityField.onValueChanged(handleTitleChange)
+      measurementField.onValueChanged(handleTitleChange)
+      ingredientField.onValueChanged(handleTitleChange)
+
+      updateStatus(titleField.getValue())
+
+      /**
+       * Handle change of title value caused by either changing title field
+       * or changing the title of the entry
+       */
+      function handleTitleChange(value) {
+        let quantity = quantityField.getValue()
+        let measurement_id = measurementField.getValue().sys.id
+        let ingredient_id = measurementField.getValue().sys.id
+        let measurement_promise = api.space.getEntry(measurement_id).then(entry => entry.fields.title)
+        let ingredient_promise = api.space.getEntry(ingredient_id).then(entry => entry.fields.title)
+        Promise.all([measurement_promise, ingredient_promise]).then(values => {
+          let measurement = values[0]
+          let ingredient = values[1]
+          setTitle(`${quantity} ${measurement} ${ingredient}`)
+        })
+      }
+
+      /**
+       * Set the input value to 'title' and update the status by checking for
+       * duplicates.
+       */
+      function setTitle(title) {
+        titleField.setValue(title)
+        setStatus('loading')
+        debouncedUpdateStatus(title)
+      }
+
+      /**
+       * Show inline status icon based on current status
+       */
+      function updateStatus(status) {
+        if (status === 'error') {
+          setStatus('error')
+        } else {
+          setStatus('ok')
+        }
+      }
+
+      /**
+       * Show icon for given status
+       */
+      function setStatus(status) {
+        _.each(statusElements, function(el, name) {
+          if (name === status) {
+            el.style.display = 'inline'
+          } else {
+            el.style.display = 'none'
+          }
+        })
+      }
+    })
+  </script>
+</body>
+
+</html>
